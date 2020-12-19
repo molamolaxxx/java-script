@@ -3,6 +3,7 @@ package com.mola.compiler;
 import com.mola.constants.StorageConfig;
 import com.mola.result.CompileResult;
 import com.sun.tools.javac.main.Main;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -15,6 +16,7 @@ import java.io.IOException;
  * @Description:
  * @date : 2020-12-17 17:46
  **/
+@Slf4j
 public class JavacCompiler implements ICompiler{
 
     private com.sun.tools.javac.main.Main compiler = new com.sun.tools.javac.main.Main("javac");
@@ -22,17 +24,27 @@ public class JavacCompiler implements ICompiler{
     @Override
     public CompileResult compile(StringBuilder sourceCode) {
         String path = saveTempSourceFile(sourceCode);
-        if (null == path) {
-            return CompileResult.failed();
+        try {
+            if (null == path) {
+                return CompileResult.failed();
+            }
+            CompileResult result = compile(path);
+
+            return result;
+        } finally {
+            // 删除源码路径
+            FileUtils.deleteQuietly(new File(path));
         }
-        return compile(path);
+
     }
 
     @Override
     public CompileResult compile(String sourcePath) {
         String classPath = sourcePath.substring(0, sourcePath.length()-5) + ".class";
         try {
+            long start = System.currentTimeMillis();
             Main.Result compile = compiler.compile(new String[]{sourcePath});
+            System.out.println("编译耗时："+ (System.currentTimeMillis() - start));
             if (!compile.isOK()) {
                 return CompileResult.failed();
             }
@@ -40,8 +52,6 @@ public class JavacCompiler implements ICompiler{
 
             return new CompileResult(bytes, classPath, sourcePath, true);
         } finally {
-            // 删除源码路径
-            FileUtils.deleteQuietly(new File(sourcePath));
             // 删除class路径
             FileUtils.deleteQuietly(new File(classPath));
         }
@@ -86,11 +96,13 @@ public class JavacCompiler implements ICompiler{
     }
 
     public static void main(String[] args) {
-        long startTime = System.currentTimeMillis();
+
         JavacCompiler javacCompiler = new JavacCompiler();
-        CompileResult result = javacCompiler.compile(new StringBuilder("import java.util.*;public class JavaScriptModel{public static void main(String[] arg){System.out.println(\"aaa\");}}"));
+//        CompileResult result = javacCompiler.compile(new StringBuilder("import java.util.*;public class JavaScriptModel{public static void main(String[] arg){System.out.println(\"aaa\");}}"));
+        long startTime = System.currentTimeMillis();
+        javacCompiler.compile("/home/mola/IdeaProjects/leetcode/src/main/resources/source/FastSort.java");
         System.out.println("debug");
-        System.out.println(System.currentTimeMillis() - startTime);
+        log.info("总耗时：" + (System.currentTimeMillis() - startTime));
     }
 
 }
